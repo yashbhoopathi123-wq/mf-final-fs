@@ -1,4 +1,10 @@
 streamlit
 pandas
+numpy
 mftool
+plotly
+scikit-learn
+scipy
+yfinance
 deprecated
+requests
