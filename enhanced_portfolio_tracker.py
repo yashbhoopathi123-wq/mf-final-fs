@@ -1,317 +1,28 @@
-"""
-═══════════════════════════════════════════════════════════════════════════════
-MUTUAL FUND ANALYZER - ABSOLUTE FINAL COMPLETE VERSION
-═══════════════════════════════════════════════════════════════════════════════
-✅ User authentication (login/signup with database)
-✅ Individual fund selection with custom lumpsum + SIP per fund
-✅ Portfolios save and APPEAR in sidebar immediately
-✅ Market-based alerts when loading portfolio
-✅ DYNAMIC allocation - recalculated each time based on:
-   - Current Nifty PE ratio (overvalued/undervalued)
-   - VIX volatility index
-   - Small/Mid cap premiums
-   - Debt yields
-   - Investment horizon
-   - SIP ratio
-✅ All in ONE file - just run it!
-
-streamlit run MutualFundAnalyzer_ABSOLUTE_FINAL.py
-═══════════════════════════════════════════════════════════════════════════════
-"""
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 import requests
-import sqlite3
-import hashlib
-import json
+from io import StringIO
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-from io import StringIO
+import json
+import hashlib
 import warnings
 warnings.filterwarnings('ignore')
 
-# ═════════════════════════════════════════════════════════════════════════════
-# DATABASE & AUTHENTICATION
-# ═════════════════════════════════════════════════════════════════════════════
-
-def init_database():
-    conn = sqlite3.connect('mutual_fund_app.db')
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS users (
-        user_id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL, email TEXT, created_date TEXT, last_login TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS portfolios (
-        portfolio_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
-        portfolio_name TEXT NOT NULL, created_date TEXT, last_updated TEXT,
-        investment_params TEXT, sector_allocations TEXT, holdings TEXT,
-        snapshots TEXT, alerts TEXT, FOREIGN KEY (user_id) REFERENCES users(user_id))''')
-    conn.commit()
-    conn.close()
-
-def hash_password(pw): 
-    return hashlib.sha256(pw.encode()).hexdigest()
-
-def create_user(user, pw, email=None):
-    try:
-        conn = sqlite3.connect('mutual_fund_app.db')
-        c = conn.cursor()
-        c.execute('SELECT username FROM users WHERE username=?', (user,))
-        if c.fetchone():
-            conn.close()
-            return {'success': False, 'message': 'Username already exists'}
-        c.execute('INSERT INTO users VALUES (NULL,?,?,?,?,?)',
-                 (user, hash_password(pw), email, datetime.now().strftime('%Y-%m-%d %H:%M'),
-                  datetime.now().strftime('%Y-%m-%d %H:%M')))
-        uid = c.lastrowid
-        conn.commit()
-        conn.close()
-        return {'success': True, 'user_id': uid}
-    except Exception as e:
-        return {'success': False, 'message': str(e)}
-
-def authenticate_user(user, pw):
-    try:
-        conn = sqlite3.connect('mutual_fund_app.db')
-        c = conn.cursor()
-        c.execute('SELECT user_id,password_hash FROM users WHERE username=?', (user,))
-        r = c.fetchone()
-        if not r: 
-            conn.close()
-            return {'success': False, 'message': 'User not found'}
-        if hash_password(pw) != r[1]:
-            conn.close()
-            return {'success': False, 'message': 'Incorrect password'}
-        c.execute('UPDATE users SET last_login=? WHERE user_id=?',
-                 (datetime.now().strftime('%Y-%m-%d %H:%M'), r[0]))
-        conn.commit()
-        conn.close()
-        return {'success': True, 'user_id': r[0], 'username': user}
-    except:
-        return {'success': False, 'message': 'Login error'}
-
-def save_portfolio_to_db(user_id, portfolio_data):
-    try:
-        conn = sqlite3.connect('mutual_fund_app.db')
-        c = conn.cursor()
-        c.execute('''INSERT INTO portfolios (user_id,portfolio_name,created_date,last_updated,
-            investment_params,sector_allocations,holdings,snapshots,alerts) VALUES (?,?,?,?,?,?,?,?,?)''',
-            (user_id, portfolio_data['name'], portfolio_data['created_date'],
-             portfolio_data.get('last_updated', portfolio_data['created_date']),
-             json.dumps(portfolio_data.get('investment_params',{})),
-             json.dumps(portfolio_data.get('sector_allocations',{})),
-             json.dumps(portfolio_data.get('holdings',[])),
-             json.dumps(portfolio_data.get('snapshots',[])),
-             json.dumps(portfolio_data.get('alerts',[]))))
-        pid = c.lastrowid
-        conn.commit()
-        conn.close()
-        return {'success': True, 'portfolio_id': pid}
-    except Exception as e:
-        return {'success': False, 'message': str(e)}
-
-def load_user_portfolios(user_id):
-    try:
-        conn = sqlite3.connect('mutual_fund_app.db')
-        c = conn.cursor()
-        c.execute('''SELECT portfolio_id,portfolio_name,created_date,last_updated,
-            investment_params,sector_allocations,holdings,snapshots,alerts
-            FROM portfolios WHERE user_id=? ORDER BY last_updated DESC''', (user_id,))
-        portfolios = []
-        for row in c.fetchall():
-            portfolios.append({
-                'portfolio_id': row[0], 'name': row[1], 'created_date': row[2], 'last_updated': row[3],
-                'investment_params': json.loads(row[4]) if row[4] else {},
-                'sector_allocations': json.loads(row[5]) if row[5] else {},
-                'holdings': json.loads(row[6]) if row[6] else [],
-                'snapshots': json.loads(row[7]) if row[7] else [],
-                'alerts': json.loads(row[8]) if row[8] else []})
-        conn.close()
-        return {'success': True, 'portfolios': portfolios}
-    except:
-        return {'success': False, 'portfolios': []}
-
-def delete_portfolio_from_db(portfolio_id, user_id):
-    try:
-        conn = sqlite3.connect('mutual_fund_app.db')
-        c = conn.cursor()
-        c.execute('SELECT user_id FROM portfolios WHERE portfolio_id=?', (portfolio_id,))
-        r = c.fetchone()
-        if not r or r[0] != user_id:
-            conn.close()
-            return {'success': False}
-        c.execute('DELETE FROM portfolios WHERE portfolio_id=?', (portfolio_id,))
-        conn.commit()
-        conn.close()
-        return {'success': True}
-    except:
-        return {'success': False}
 
 # ═════════════════════════════════════════════════════════════════════════════
-# DYNAMIC ALLOCATION ENGINE - MARKET-BASED (NOT FIXED!)
+# AUTHENTICATION CHECK - MUST BE BEFORE st.set_page_config
 # ═════════════════════════════════════════════════════════════════════════════
 
-def get_market_conditions():
-    """Get current market conditions - in production would fetch from NSE/BSE APIs"""
-    # Simulated data - replace with actual API calls in production
-    return {
-        'nifty_pe': 22.5,           # Current Nifty 50 PE ratio
-        'historical_pe': 20.0,      # 10-year average PE
-        'vix': 15.2,                # India VIX (volatility)
-        'small_cap_premium': 18,    # % above historical valuation
-        'mid_cap_premium': 12,      # % above historical valuation
-        'debt_yield': 7.2,          # 10-year G-Sec yield
-        'inflation': 5.1,           # Current CPI inflation
-        'market_trend': 'neutral',  # bullish/neutral/bearish
-        'fii_flows': 'neutral',     # positive/neutral/negative
-        'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M')
-    }
+init_database()
+init_portfolio_storage()
 
-def calculate_dynamic_allocation(principal, monthly_sip, years, base_risk_profile):
-    """
-    DYNAMIC allocation - changes every time based on market conditions!
-    NOT fixed templates - recalculated based on current data
-    """
-    market = get_market_conditions()
-    
-    # Starting point (but will be heavily modified by market conditions)
-    BASE = {
-        "Conservative (Low Risk)": {
-            "Debt / Liquid": 30, "Gilt / Government Securities": 20,
-            "Gold / Commodity": 15, "Index / Passive": 20,
-            "Hybrid / Balanced": 10, "Global / International": 5},
-        "Moderate (Balanced Risk)": {
-            "Index / Passive": 25, "Large Cap": 20, "Flexi Cap": 15,
-            "Hybrid / Balanced": 10, "US Tech / NASDAQ": 10,
-            "Debt / Liquid": 10, "Gold / Commodity": 5, "Global / International": 5},
-        "Aggressive (High Risk)": {
-            "Small Cap": 20, "Mid Cap": 20, "US Tech / NASDAQ": 15,
-            "Sector – Technology": 10, "Sector – Healthcare / Pharma": 10,
-            "Large Cap": 10, "Flexi Cap": 10, "Thematic – ESG / Sustainability": 5}}
-    
-    allocation = BASE[base_risk_profile].copy()
-    reasons = []
-    
-    # ═══ DYNAMIC ADJUSTMENT 1: Market Valuation ═══
-    pe_ratio = market['nifty_pe'] / market['historical_pe']
-    if pe_ratio > 1.15:  # Market overvalued by 15%+
-        reasons.append(f"📊 Market overvalued (PE: {market['nifty_pe']} vs avg {market['historical_pe']})")
-        # Reduce equity across the board
-        for k in ['Large Cap','Small Cap','Mid Cap','Flexi Cap']:
-            if k in allocation: allocation[k] = max(0, allocation[k] - 5)
-        # Increase defensive
-        if 'Debt / Liquid' in allocation: allocation['Debt / Liquid'] += 10
-        if 'Gold / Commodity' in allocation: allocation['Gold / Commodity'] += 5
-        reasons.append("   → Reduced equity by 5% each, increased debt +10%, gold +5%")
-        
-    elif pe_ratio < 0.85:  # Market undervalued by 15%+
-        reasons.append(f"📊 Market undervalued (PE: {market['nifty_pe']} vs avg {market['historical_pe']}) - BUY OPPORTUNITY!")
-        # Increase equity
-        for k in ['Large Cap','Mid Cap','Flexi Cap']:
-            if k in allocation: allocation[k] += 5
-        # Reduce defensive
-        if 'Debt / Liquid' in allocation: allocation['Debt / Liquid'] = max(0, allocation['Debt / Liquid'] - 10)
-        if 'Gold / Commodity' in allocation: allocation['Gold / Commodity'] = max(0, allocation['Gold / Commodity'] - 5)
-        reasons.append("   → Increased equity +5% each, reduced debt -10%")
-    
-    # ═══ DYNAMIC ADJUSTMENT 2: Small Cap Valuation ═══
-    if market['small_cap_premium'] > 20:  # Small caps expensive
-        reasons.append(f"⚠️ Small caps at {market['small_cap_premium']}% premium - EXPENSIVE")
-        if 'Small Cap' in allocation: 
-            reduction = allocation['Small Cap']
-            allocation['Small Cap'] = max(0, allocation['Small Cap'] - 15)
-            if 'Large Cap' in allocation: allocation['Large Cap'] += 7
-            if 'Index / Passive' in allocation: allocation['Index / Passive'] += 8
-            reasons.append(f"   → Reduced Small Cap -{reduction:.0f}%, moved to Large Cap/Index")
-    
-    # ═══ DYNAMIC ADJUSTMENT 3: Mid Cap Valuation ═══
-    if market['mid_cap_premium'] > 15:  # Mid caps expensive
-        reasons.append(f"⚠️ Mid caps at {market['mid_cap_premium']}% premium")
-        if 'Mid Cap' in allocation:
-            allocation['Mid Cap'] = max(0, allocation['Mid Cap'] - 8)
-            if 'Flexi Cap' in allocation: allocation['Flexi Cap'] += 8
-            reasons.append("   → Reduced Mid Cap -8%, increased Flexi Cap +8%")
-    
-    # ═══ DYNAMIC ADJUSTMENT 4: Volatility (VIX) ═══
-    if market['vix'] > 20:  # High volatility - defensive
-        reasons.append(f"📉 High volatility (VIX: {market['vix']}) - DEFENSIVE MODE")
-        for k in ['Small Cap','Mid Cap','Sector – Technology']:
-            if k in allocation: allocation[k] = max(0, allocation[k] - 5)
-        for k in ['Hybrid / Balanced','Debt / Liquid']:
-            if k in allocation: allocation[k] += 7
-        reasons.append("   → Reduced volatile sectors -5%, increased hybrid/debt +7%")
-        
-    elif market['vix'] < 12:  # Low volatility - can take risk
-        reasons.append(f"📈 Low volatility (VIX: {market['vix']}) - FAVORABLE for equity")
-        for k in ['Small Cap','Mid Cap']:
-            if k in allocation: allocation[k] += 4
-        if 'Debt / Liquid' in allocation: 
-            allocation['Debt / Liquid'] = max(0, allocation['Debt / Liquid'] - 8)
-        reasons.append("   → Increased Small/Mid Cap +4%, reduced debt -8%")
-    
-    # ═══ DYNAMIC ADJUSTMENT 5: Interest Rates ═══
-    if market['debt_yield'] > 7.5:  # High yields - debt attractive
-        reasons.append(f"💰 High debt yields ({market['debt_yield']}%) - LOCK IN RATES")
-        if 'Debt / Liquid' in allocation: allocation['Debt / Liquid'] += 8
-        if 'Gilt / Government Securities' in allocation: allocation['Gilt / Government Securities'] += 7
-        for k in ['Small Cap','Sector – Technology']:
-            if k in allocation: allocation[k] = max(0, allocation[k] - 7)
-        reasons.append("   → Increased debt +8%, gilt +7%, reduced risky equity -7%")
-    
-    # ═══ DYNAMIC ADJUSTMENT 6: Investment Horizon ═══
-    if years < 3:  # Short term - reduce volatility
-        reasons.append(f"⏱️ Short horizon ({years} years) - STABILITY FOCUS")
-        for k in ['Small Cap','Mid Cap']:
-            if k in allocation: allocation[k] = max(0, allocation[k] - 20)
-        for k in ['Debt / Liquid','Hybrid / Balanced']:
-            if k in allocation: allocation[k] += 15
-        reasons.append("   → Major reduction in volatile equity, increased debt/hybrid")
-        
-    elif years > 10:  # Long term - can ride volatility
-        reasons.append(f"⏱️ Long horizon ({years} years) - CAN RIDE VOLATILITY")
-        for k in ['Small Cap','Mid Cap']:
-            if k in allocation: allocation[k] += 7
-        if 'Debt / Liquid' in allocation: 
-            allocation['Debt / Liquid'] = max(0, allocation['Debt / Liquid'] - 12)
-        reasons.append("   → Increased Small/Mid Cap +7%, reduced debt -12%")
-    
-    # ═══ DYNAMIC ADJUSTMENT 7: SIP Ratio (Rupee Cost Averaging) ═══
-    total = principal + (monthly_sip * years * 12)
-    sip_ratio = (monthly_sip * years * 12) / total if total > 0 else 0
-    
-    if sip_ratio > 0.7:  # Heavy SIP - averaging works well
-        reasons.append(f"💵 High SIP ratio ({sip_ratio*100:.0f}%) - RUPEE COST AVERAGING FAVORABLE")
-        for k in ['Small Cap','Mid Cap']:
-            if k in allocation: allocation[k] += 6
-        if 'Debt / Liquid' in allocation: 
-            allocation['Debt / Liquid'] = max(0, allocation['Debt / Liquid'] - 12)
-        reasons.append("   → Increased volatile equity +6% (SIP averages well), reduced debt")
-    
-    elif sip_ratio < 0.3:  # Mostly lumpsum - be careful with timing
-        reasons.append(f"💰 Lumpsum heavy ({(1-sip_ratio)*100:.0f}% lumpsum) - TIMING RISK")
-        for k in ['Small Cap','Mid Cap']:
-            if k in allocation: allocation[k] = max(0, allocation[k] - 5)
-        for k in ['Large Cap','Index / Passive']:
-            if k in allocation: allocation[k] += 5
-        reasons.append("   → Shifted to safer Large Cap/Index, reduced volatile small/mid")
-    
-    # ═══ NORMALIZE TO 100% ═══
-    allocation = {k: max(0, v) for k, v in allocation.items()}
-    total_alloc = sum(allocation.values())
-    if total_alloc > 0:
-        allocation = {k: (v/total_alloc)*100 for k,v in allocation.items()}
-    
-    # Remove very small allocations (< 2%)
-    allocation = {k: round(v,1) for k,v in allocation.items() if v >= 2}
-    
-    return {
-        'allocation': allocation,
-        'reasons': reasons,
-        'market_data': market
-    }
+if not st.session_state.logged_in:
+    render_login_page()
+    st.stop()
 
-# Continuing with rest of the code...
+st.set_page_config(page_title="Mutual Fund Analyzer", layout="wide")
 st.title("📊 Mutual Fund Performance Analyzer")
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -1960,6 +1671,7 @@ with tab4:
                 st.success(f"✅ Saved! Portfolio ID: {portfolio_id}")
                 st.info("💡 Load it anytime from the sidebar → 'My Saved Portfolios'")
                 st.balloons()
+                st.rerun()  # CRITICAL: Refresh to show portfolio in sidebar
         
         with col_save3:
             st.write("")
@@ -2012,7 +1724,23 @@ with tab4:
         # Summary table
         st.markdown("#### 📊 Summary Table — All Profiles")
         summary_rows = []
+        for pname, pdata in RISK_ALLOCATIONS.items():
+            p_sim = simulate_portfolio_returns(port_principal, port_sip, port_years, pdata["expected_return"])
+            summary_rows.append({
+                "Profile":          pname,
+                "Expected CAGR":    f"{pdata['expected_return']}%",
+                "Total Invested":   f"₹{p_sim['total_invested']:,.0f}",
+                "Projected Value":  f"₹{p_sim['total_value']:,.0f}",
+                "Total Gain":       f"₹{p_sim['total_gain']:,.0f}",
+                "Absolute Return":  f"{p_sim['return_pct']:.1f}%",
+            })
+        st.dataframe(pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
 
-# ════════════════════════════════════════════════════════════════════════════
-# END OF INTEGRATED FILE
-# ════════════════════════════════════════════════════════════════════════════
+        st.warning(
+            "⚠️ Projected returns are illustrative estimates based on historical category averages. "
+            "Actual returns may vary significantly. This is not financial advice — consult a SEBI-registered advisor."
+        )
+
+
+st.markdown("---")
+st.caption("Data provided by mftool library. Past performance does not guarantee future results.")
