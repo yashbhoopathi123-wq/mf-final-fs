@@ -16,7 +16,7 @@ warnings.filterwarnings('ignore')
 # ═════════════════════════════════════════════════════════════════════════════
 
 init_database()
-init_portfolio_storage()
+init_auth_session()
 
 if not st.session_state.logged_in:
     render_login_page()
@@ -29,14 +29,14 @@ st.title("📊 Mutual Fund Performance Analyzer")
 # PORTFOLIO STORAGE INITIALIZATION
 # ═════════════════════════════════════════════════════════════════════════════
 
-def init_portfolio_storage():
+def init_auth_session():
     """Initialize session state for portfolio tracking"""
     if 'saved_portfolios' not in st.session_state:
         st.session_state.saved_portfolios = {}
     if 'active_portfolio_id' not in st.session_state:
         st.session_state.active_portfolio_id = None
 
-init_portfolio_storage()
+init_auth_session()
 
 def save_portfolio(portfolio_name, allocation_data, investment_params):
     """Save portfolio allocation for tracking"""
