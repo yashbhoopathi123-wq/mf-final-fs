@@ -534,32 +534,6 @@ if st.sidebar.button("🚪 Logout", use_container_width=True):
     st.rerun()
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("💼 My Saved Portfolios")
-
-result = load_user_portfolios(st.session_state.user_id)
-if result['success'] and result['portfolios']:
-    st.sidebar.success(f"📁 {len(result['portfolios'])} saved")
-    names = {p['portfolio_id']: f"{p['name']} ({p['created_date'][:10]})" for p in result['portfolios']}
-    sel = st.sidebar.selectbox("Select", list(names.values()), key='psel')
-    sel_id = [k for k,v in names.items() if v==sel][0]
-    
-    c1,c2 = st.sidebar.columns(2)
-    if c1.button("📂 Load", use_container_width=True):
-        p = next(p for p in result['portfolios'] if p['portfolio_id']==sel_id)
-        st.session_state.active_portfolio = p
-        st.sidebar.markdown("**🔔 Advice:**")
-        for h in p.get('holdings',[])[:2]:
-            if 'Small Cap' in h.get('sector',''):
-                st.sidebar.warning(f"⚠️ {h['fund_name'][:15]}: Review small caps")
-        st.success("Loaded!")
-        st.rerun()
-    if c2.button("🗑️", use_container_width=True):
-        delete_portfolio_from_db(sel_id, st.session_state.user_id)
-        st.rerun()
-else:
-    st.sidebar.info("No portfolios yet")
-
-st.sidebar.markdown("---")
 
 
 
