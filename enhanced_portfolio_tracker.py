@@ -1,21 +1,5 @@
 """
-═══════════════════════════════════════════════════════════════════════════════
-MUTUAL FUND ANALYZER - COMPLETE SINGLE FILE VERSION
-═══════════════════════════════════════════════════════════════════════════════
-
-Everything you asked for in ONE file:
-✅ Login/Signup page (appears first)
-✅ User authentication with database
-✅ Portfolio saving and loading
-✅ Individual fund selection with custom amounts
-✅ Portfolios appear in sidebar immediately after saving
-✅ Market-based advice when loading portfolios
-✅ All original analysis features
-
-Just run: streamlit run FINAL_WORKING_APP.py
-
-No other files needed!
-═══════════════════════════════════════════════════════════════════════════════
+MUTUAL FUND ANALYZER - COMPLETE WITH FUND SELECTOR
 """
 
 import streamlit as st
@@ -30,10 +14,6 @@ from datetime import datetime, timedelta
 from io import StringIO
 import warnings
 warnings.filterwarnings('ignore')
-
-# ═════════════════════════════════════════════════════════════════════════════
-# AUTHENTICATION & DATABASE FUNCTIONS
-# ═════════════════════════════════════════════════════════════════════════════
 
 def init_database():
     """Initialize SQLite database with users and portfolios tables"""
@@ -468,10 +448,73 @@ def render_user_sidebar():
 init_database()
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-# AUTHENTICATION CHECK - RUNS BEFORE MAIN APP
-# ═════════════════════════════════════════════════════════════════════════════
+def render_fund_selector_interface(sector_name, sector_allocation_pct, total_investment, available_funds):
+    """Select specific funds within a sector with individual amounts"""
+    st.markdown(f"#### 📂 {sector_name} ({sector_allocation_pct:.1f}%)")
+    sector_amount = total_investment * sector_allocation_pct / 100
+    st.caption(f"💰 Sector budget: ₹{sector_amount:,.0f}")
+    
+    num_funds = st.number_input(
+        f"How many funds?",
+        min_value=1,
+        max_value=min(5, len(available_funds)),
+        value=min(2, len(available_funds)),
+        key=f"nf_{sector_name.replace(' ','_').replace('/','_')}"
+    )
+    
+    selected_holdings = []
+    for i in range(num_funds):
+        with st.expander(f"💼 Fund #{i+1}", expanded=(i==0)):
+            opts = [f"{f['name']} ({f.get('manager','N/A')})" for f in available_funds]
+            sel = st.selectbox("Select", opts, key=f"fs_{sector_name.replace(' ','_').replace('/','_')}_{i}")
+            fund = available_funds[opts.index(sel)]
+            
+            col1,col2 = st.columns(2)
+            lump = col1.number_input("Lumpsum ₹", 0, 10000000, int(sector_amount*0.3/num_funds), 1000,
+                                    key=f"l_{sector_name.replace(' ','_').replace('/','_')}_{i}")
+            sip = col2.number_input("SIP/mo ₹", 0, 500000, int((sector_amount*0.7/num_funds)/12), 500,
+                                   key=f"s_{sector_name.replace(' ','_').replace('/','_')}_{i}")
+            
+            st.info(f"📊 Total 1st year: ₹{lump + sip*12:,}")
+            
+            selected_holdings.append({
+                'sector': sector_name,
+                'fund_name': fund['name'],
+                'fund_code': fund['code'],
+                'fund_manager': fund.get('manager','N/A'),
+                'expense_ratio': fund['expense_ratio'],
+                'manager_tenure': fund['manager_tenure'],
+                'lumpsum_amount': lump,
+                'monthly_sip': sip,
+                'start_date': datetime.now().strftime('%Y-%m-%d')
+            })
+    
+    return selected_holdings
 
+
+def render_portfolio_summary(all_holdings):
+    """Display portfolio summary"""
+    st.markdown("### 📊 Portfolio Summary")
+    tl = sum(h['lumpsum_amount'] for h in all_holdings)
+    ts = sum(h['monthly_sip'] for h in all_holdings)
+    c1,c2,c3 = st.columns(3)
+    c1.metric("Funds", len(all_holdings))
+    c2.metric("Lumpsum", f"₹{tl:,}")
+    c3.metric("SIP/mo", f"₹{ts:,}")
+    
+    df = pd.DataFrame([{
+        'Sector': h['sector'],
+        'Fund': h['fund_name'][:35],
+        'Manager': h['fund_manager'],
+        'Lumpsum': f"₹{h['lumpsum_amount']:,}",
+        'SIP': f"₹{h['monthly_sip']:,}"
+    } for h in all_holdings])
+    st.dataframe(df, use_container_width=True, hide_index=True)
+    return {'total_lumpsum': tl, 'total_sip': ts}
+
+
+
+# Auth check
 init_database()
 init_session_state()
 
@@ -479,101 +522,42 @@ if not st.session_state.logged_in:
     render_login_page()
     st.stop()
 
-# User is logged in - continue to main app
-
 st.set_page_config(page_title="Mutual Fund Analyzer", layout="wide")
 st.title("📊 Mutual Fund Performance Analyzer")
 
-# ═════════════════════════════════════════════════════════════════════════════
-# SIDEBAR - USER INFO & SAVED PORTFOLIOS
-# ═════════════════════════════════════════════════════════════════════════════
-
+# Sidebar
 st.sidebar.markdown("---")
 st.sidebar.markdown(f"### 👤 {st.session_state.username}")
-
 if st.sidebar.button("🚪 Logout", use_container_width=True):
-    st.session_state.logged_in = False
-    st.session_state.user_id = None
-    st.session_state.username = None
-    st.session_state.active_portfolio = None
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
     st.rerun()
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("💼 My Saved Portfolios")
 
-# Load user's portfolios
 result = load_user_portfolios(st.session_state.user_id)
-
 if result['success'] and result['portfolios']:
-    st.sidebar.success(f"📁 {len(result['portfolios'])} portfolio(s)")
+    st.sidebar.success(f"📁 {len(result['portfolios'])} saved")
+    names = {p['portfolio_id']: f"{p['name']} ({p['created_date'][:10]})" for p in result['portfolios']}
+    sel = st.sidebar.selectbox("Select", list(names.values()), key='psel')
+    sel_id = [k for k,v in names.items() if v==sel][0]
     
-    # Create dropdown
-    portfolio_names = {p['portfolio_id']: f"{p['name']} ({p['created_date'][:10]})" 
-                      for p in result['portfolios']}
-    
-    selected_name = st.sidebar.selectbox(
-        "Select Portfolio",
-        list(portfolio_names.values()),
-        key='portfolio_selector'
-    )
-    
-    # Get selected portfolio ID
-    selected_id = [pid for pid, name in portfolio_names.items() if name == selected_name][0]
-    
-    col1, col2 = st.sidebar.columns(2)
-    
-    # Load button
-    if col1.button("📂 Load", key='load_portfolio_btn', use_container_width=True):
-        portfolio = next(p for p in result['portfolios'] if p['portfolio_id'] == selected_id)
-        st.session_state.active_portfolio = portfolio
-        
-        # Show market advice
-        st.sidebar.markdown("**🔔 Market Advice:**")
-        holdings = portfolio.get('holdings', [])
-        
-        advice_count = 0
-        for holding in holdings[:3]:
-            sector = holding.get('sector', '')
-            fund_name = holding.get('fund_name', 'Unknown')
-            sip = holding.get('monthly_sip', 0)
-            lumpsum = holding.get('lumpsum_amount', 0)
-            
-            if 'Small Cap' in sector:
-                st.sidebar.warning(f"⚠️ {fund_name[:20]}: Small caps at premium - review allocation")
-                advice_count += 1
-            
-            if sip < 1000 and sip > 0:
-                st.sidebar.info(f"💡 {fund_name[:20]}: Consider increasing SIP to ₹{sip*2}/mo")
-                advice_count += 1
-            
-            if lumpsum > 50000 and any(x in sector for x in ['Small Cap', 'Mid Cap']):
-                st.sidebar.info(f"📊 {fund_name[:20]}: Large lumpsum in volatile sector - consider STP")
-                advice_count += 1
-        
-        if advice_count == 0:
-            st.sidebar.success("✅ Portfolio looks good! No immediate changes needed")
-        
-        st.success(f"Portfolio '{portfolio['name']}' loaded!")
+    c1,c2 = st.sidebar.columns(2)
+    if c1.button("📂 Load", use_container_width=True):
+        p = next(p for p in result['portfolios'] if p['portfolio_id']==sel_id)
+        st.session_state.active_portfolio = p
+        st.sidebar.markdown("**🔔 Advice:**")
+        for h in p.get('holdings',[])[:2]:
+            if 'Small Cap' in h.get('sector',''):
+                st.sidebar.warning(f"⚠️ {h['fund_name'][:15]}: Review small caps")
+        st.success("Loaded!")
         st.rerun()
-    
-    # Delete button  
-    if col2.button("🗑️ Del", key='delete_portfolio_btn', use_container_width=True):
-        result = delete_portfolio_from_db(selected_id, st.session_state.user_id)
-        if result['success']:
-            st.success("Portfolio deleted!")
-            st.session_state.active_portfolio = None
-            st.rerun()
-        else:
-            st.error("Failed to delete")
-    
-    # Show holdings preview
-    if st.session_state.active_portfolio:
-        with st.sidebar.expander("📊 Current Holdings", expanded=False):
-            for holding in st.session_state.active_portfolio.get('holdings', [])[:5]:
-                st.write(f"**{holding.get('fund_name', 'Unknown')[:30]}**")
-                st.caption(f"₹{holding.get('lumpsum_amount', 0):,} + ₹{holding.get('monthly_sip', 0)}/mo")
+    if c2.button("🗑️", use_container_width=True):
+        delete_portfolio_from_db(sel_id, st.session_state.user_id)
+        st.rerun()
 else:
-    st.sidebar.info("No portfolios yet. Create one in Portfolio Allocator tab!")
+    st.sidebar.info("No portfolios yet")
 
 st.sidebar.markdown("---")
 
@@ -2192,56 +2176,50 @@ with tab4:
                 st.dataframe(fund_df, use_container_width=True, hide_index=True)
 
         # ══════════════════════════════════════════════════════════════════════════
-        # ── SAVE PORTFOLIO SECTION ────────────────────────────────────────────────
-        # ══════════════════════════════════════════════════════════════════════════
+        # ── SAVE PORTFOLIO WITH FUND SELECTION ──────────────────────────────
         st.markdown("---")
-        st.markdown("### 💾 Save This Portfolio")
-        st.write("Save your allocation to track performance and get rebalancing alerts!")
+        st.markdown("## 🎯 Personalize - Select Your Funds")
         
-        col_save1, col_save2, col_save3 = st.columns([3, 1, 1])
+        enable_select = st.checkbox("✅ Select individual funds (RECOMMENDED)", value=True, key='fund_sel_cb')
         
-        with col_save1:
-            portfolio_name = st.text_input(
-                "Portfolio Name",
-                value=f"My Portfolio {datetime.now().strftime('%Y-%m-%d')}",
-                key='portfolio_name_input',
-                help="Give your portfolio a memorable name"
-            )
-        
-        with col_save2:
-            st.write("")  # Spacer
-            st.write("")  # Spacer
-            if st.button("💾 Save Portfolio", type="primary", use_container_width=True, key='save_portfolio_btn'):
-                portfolio_id = save_portfolio(
-                    portfolio_name=portfolio_name,
-                    allocation_data=sector_allocation,
-                    investment_params={
-                        'principal': port_principal,
-                        'monthly_sip': port_sip,
-                        'years': port_years,
-                        'risk_profile': risk_profile
+        if enable_select:
+            all_holdings = []
+            total_inv = port_principal + (port_sip * port_years * 12)
+            
+            for sector, pct in sector_allocation.items():
+                if pct > 0 and sector in PORTFOLIO_SECTORS:
+                    with st.expander(f"🔹 {sector} ({pct:.1f}%)", expanded=True):
+                        funds = PORTFOLIO_SECTORS[sector]['funds']
+                        if funds:
+                            h = render_fund_selector_interface(sector, pct, total_inv, funds)
+                            all_holdings.extend(h)
+            
+            if all_holdings:
+                st.markdown("---")
+                render_portfolio_summary(all_holdings)
+                st.markdown("---")
+                pname = st.text_input("Portfolio Name", f"Portfolio {datetime.now().strftime('%Y-%m-%d')}")
+                
+                if st.button("💾 Save Portfolio", type="primary"):
+                    pdata = {
+                        'name': pname,
+                        'created_date': datetime.now().strftime('%Y-%m-%d %H:%M'),
+                        'investment_params': {'principal': port_principal, 'monthly_sip': port_sip, 'years': port_years, 'risk_profile': risk_profile},
+                        'sector_allocations': dict(sector_allocation),
+                        'holdings': all_holdings,
+                        'snapshots': [],
+                        'alerts': []
                     }
-                )
-                st.success(f"✅ Saved! Portfolio ID: {portfolio_id}")
-                st.info("💡 Check sidebar → 'My Saved Portfolios'")
-                st.balloons()
-                st.rerun()  # Refresh to show in sidebar immediately
+                    r = save_portfolio_to_db(st.session_state.user_id, pdata)
+                    if r['success']:
+                        st.success(f"✅ Saved {len(all_holdings)} funds!")
+                        st.balloons()
+                        st.rerun()
+                    else:
+                        st.error("Error saving")
+        else:
+            st.info("Enable checkbox to select funds")
         
-        with col_save3:
-            st.write("")
-            st.write("")
-            # Export button
-            if st.session_state.saved_portfolios:
-                portfolio_json = json.dumps(list(st.session_state.saved_portfolios.values()), indent=2)
-                st.download_button(
-                    "📥 Export All",
-                    portfolio_json,
-                    file_name=f"portfolios_{datetime.now().strftime('%Y%m%d')}.json",
-                    mime="application/json",
-                    use_container_width=True,
-                    key='export_all_btn'
-                )
-
         # ── Multi-scenario comparison ──────────────────────────────────────────
         st.markdown("---")
         st.markdown("### 🔭 Scenario Comparison: Low vs Medium vs High Risk")
