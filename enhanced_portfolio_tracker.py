@@ -1391,6 +1391,651 @@ def assess_risk_profile_quiz(answers):
         return 'Conservative (Low Risk)'
 
 
+
+# ═════════════════════════════════════════════════════════════════════════════
+# INTELLIGENT RISK ASSESSMENT SYSTEM
+# ═════════════════════════════════════════════════════════════════════════════
+
+def conduct_comprehensive_risk_assessment():
+    """
+    AI-powered risk assessment with comprehensive questionnaire
+    Returns personalized risk score and profile
+    """
+    
+    st.markdown("### 🧠 Smart Risk Assessment")
+    st.info("💡 Answer these questions to get a personalized risk profile based on your financial situation, "
+            "goals, psychology, and market conditions.")
+    
+    # Initialize session state for quiz
+    if 'risk_answers' not in st.session_state:
+        st.session_state.risk_answers = {}
+    
+    answers = {}
+    
+    # Section 1: Demographics & Financial Situation
+    with st.expander("📊 Part 1: Your Financial Profile", expanded=True):
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            answers['age'] = st.number_input(
+                "1️⃣ Your Age",
+                min_value=18, max_value=100, value=35,
+                help="Younger investors can typically take more risk"
+            )
+            
+            answers['income_stability'] = st.selectbox(
+                "2️⃣ Income Stability",
+                ["Highly stable (govt/large company)", 
+                 "Stable with regular increments",
+                 "Variable but predictable",
+                 "Highly variable (business/commission)",
+                 "Unstable/between jobs"],
+                help="Stable income allows more investment risk"
+            )
+            
+            answers['monthly_income'] = st.selectbox(
+                "3️⃣ Monthly Income Range",
+                ["< ₹25,000", "₹25,000 - ₹50,000", "₹50,000 - ₹1,00,000",
+                 "₹1,00,000 - ₹2,00,000", "> ₹2,00,000"]
+            )
+        
+        with col2:
+            answers['dependents'] = st.number_input(
+                "4️⃣ Number of Dependents",
+                min_value=0, max_value=10, value=2,
+                help="More dependents = need for more stability"
+            )
+            
+            answers['debt_obligations'] = st.selectbox(
+                "5️⃣ Monthly Debt Obligations",
+                ["No debt", "< 20% of income", "20-40% of income",
+                 "40-60% of income", "> 60% of income"],
+                help="High debt reduces risk capacity"
+            )
+            
+            answers['emergency_fund'] = st.selectbox(
+                "6️⃣ Emergency Fund Status",
+                ["6+ months expenses saved",
+                 "3-6 months expenses",
+                 "1-3 months expenses",
+                 "Less than 1 month",
+                 "No emergency fund"],
+                help="Emergency fund is crucial before investing"
+            )
+    
+    # Section 2: Investment Goals & Horizon
+    with st.expander("🎯 Part 2: Investment Goals & Timeline", expanded=True):
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            answers['investment_goal'] = st.selectbox(
+                "7️⃣ Primary Investment Goal",
+                ["Retirement (15+ years away)",
+                 "Child's education (10-15 years)",
+                 "House down payment (5-10 years)",
+                 "Marriage/major expense (3-5 years)",
+                 "Short-term wealth building (< 3 years)",
+                 "Emergency corpus building"],
+                help="Different goals need different strategies"
+            )
+            
+            answers['goal_flexibility'] = st.selectbox(
+                "8️⃣ Goal Date Flexibility",
+                ["Very flexible - can delay if needed",
+                 "Somewhat flexible - can delay 1-2 years",
+                 "Fixed - must reach goal by target date",
+                 "Urgent - need money sooner if possible"],
+                help="Flexible timelines allow recovery from losses"
+            )
+        
+        with col2:
+            answers['investment_priority'] = st.selectbox(
+                "9️⃣ Investment Priority",
+                ["Maximum growth - I want highest returns",
+                 "Growth with some safety",
+                 "Balanced - equal focus on growth and safety",
+                 "Safety with some growth",
+                 "Capital protection - don't want to lose money"],
+                help="This shapes your asset allocation"
+            )
+            
+            answers['other_investments'] = st.selectbox(
+                "🔟 Other Investments",
+                ["No other investments",
+                 "Some PPF/FD/Gold",
+                 "Significant real estate",
+                 "Diversified portfolio (stocks/bonds/property)",
+                 "Concentrated in one asset (e.g., only stocks)"],
+                help="Diversification across asset classes"
+            )
+    
+    # Section 3: Risk Psychology & Experience
+    with st.expander("🧠 Part 3: Risk Tolerance & Psychology", expanded=True):
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            answers['loss_reaction'] = st.selectbox(
+                "1️⃣1️⃣ If your portfolio drops 20% in a month, you would:",
+                ["Panic and sell everything immediately",
+                 "Feel very anxious and consider selling",
+                 "Feel uncomfortable but hold steady",
+                 "Stay calm and continue SIPs",
+                 "Get excited and invest more (buy the dip)"],
+                help="Honest answer - how would you really react?"
+            )
+            
+            answers['past_experience'] = st.selectbox(
+                "1️⃣2️⃣ Investment Experience",
+                ["Complete beginner - first time investing",
+                 "Beginner - invested in FD/PPF only",
+                 "Intermediate - some mutual fund experience",
+                 "Experienced - actively managed portfolio for 3+ years",
+                 "Expert - 10+ years, survived market crashes"],
+                help="Experience helps handle volatility"
+            )
+            
+            answers['market_knowledge'] = st.selectbox(
+                "1️⃣3️⃣ Market Knowledge",
+                ["Don't understand markets at all",
+                 "Basic understanding from news",
+                 "Good understanding - read regularly",
+                 "Advanced - follow markets daily",
+                 "Expert - understand valuations, ratios, etc."],
+                help="Knowledge reduces panic during volatility"
+            )
+        
+        with col2:
+            answers['sleep_test'] = st.selectbox(
+                "1️⃣4️⃣ Sleep Test - Maximum loss you can handle without losing sleep:",
+                ["Any loss disturbs me - want 100% safety",
+                 "5% loss max - very conservative",
+                 "10-15% loss - somewhat conservative",
+                 "20-30% loss - moderate risk OK",
+                 "30-50% loss - high risk OK, focused on long term"],
+                help="Be honest - this is crucial for your peace of mind"
+            )
+            
+            answers['regret_test'] = st.selectbox(
+                "1️⃣5️⃣ What would you regret more?",
+                ["Taking risk and losing money",
+                 "Mostly regret losses, but OK with small risks",
+                 "Equal regret for both",
+                 "Mostly regret missing gains, can handle some loss",
+                 "Not taking risk and missing big gains"],
+                help="Reveals your true risk appetite"
+            )
+            
+            answers['investment_frequency'] = st.selectbox(
+                "1️⃣6️⃣ How often will you check portfolio?",
+                ["Multiple times daily",
+                 "Daily",
+                 "Weekly",
+                 "Monthly",
+                 "Quarterly/Annually"],
+                help="Frequent checking increases anxiety"
+            )
+    
+    # Section 4: Market Conditions & Current Situation
+    with st.expander("📰 Part 4: Market Awareness & Timing", expanded=True):
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            answers['market_timing'] = st.selectbox(
+                "1️⃣7️⃣ Current Market View",
+                ["Markets are too high - I'll wait for correction",
+                 "Markets are high but I'll invest cautiously",
+                 "Don't know/don't care about market levels",
+                 "Good time to invest with SIP approach",
+                 "Great time - will invest lumpsum aggressively"],
+                help="Your market view affects allocation"
+            )
+            
+            answers['news_influence'] = st.selectbox(
+                "1️⃣8️⃣ How much do news headlines affect your decisions?",
+                ["Strongly - I change plans based on news",
+                 "Moderately - news makes me reconsider",
+                 "Slightly - I'm aware but stay the course",
+                 "Minimal - I focus on long term",
+                 "Not at all - I ignore short-term noise"],
+                help="Emotional stability is crucial"
+            )
+        
+        with col2:
+            answers['sip_vs_lumpsum'] = st.selectbox(
+                "1️⃣9️⃣ Current Investment Preference",
+                ["100% lumpsum - invest everything now",
+                 "Mostly lumpsum (70-80%)",
+                 "Balanced (50-50 lumpsum and SIP)",
+                 "Mostly SIP (70-80%)",
+                 "100% SIP - no lumpsum"],
+                help="SIP reduces timing risk"
+            )
+            
+            answers['rebalancing_comfort'] = st.selectbox(
+                "2️⃣0️⃣ Comfort with Active Management",
+                ["Want completely hands-off - set and forget",
+                 "Minimal involvement - annual review OK",
+                 "Moderate - can rebalance quarterly",
+                 "Active - comfortable with monthly reviews",
+                 "Very active - enjoy daily tracking and trading"],
+                help="Active management can improve returns"
+            )
+    
+    # Calculate AI-powered risk score
+    if st.button("🧮 Calculate My Personalized Risk Profile", type="primary", use_container_width=True):
+        
+        with st.spinner("🤖 AI analyzing your responses with current market conditions..."):
+            
+            # Simulate AI processing
+            import time
+            time.sleep(1.5)
+            
+            # Calculate comprehensive risk score
+            risk_result = calculate_ai_risk_score(answers)
+            
+            # Store in session state
+            st.session_state.risk_assessment_result = risk_result
+            st.session_state.risk_answers = answers
+            
+            # Display results
+            st.success("✅ Risk Assessment Complete!")
+            
+            # Show risk profile
+            st.markdown("---")
+            st.markdown(f"## 🎯 Your Risk Profile: **{risk_result['profile_name']}**")
+            
+            # Risk score visualization
+            col1, col2, col3 = st.columns([2, 1, 2])
+            
+            with col1:
+                st.metric("Risk Score", f"{risk_result['risk_score']}/100")
+                st.progress(risk_result['risk_score'] / 100)
+            
+            with col2:
+                st.markdown("**Profile**")
+                if risk_result['risk_score'] >= 75:
+                    st.success("🚀 Aggressive")
+                elif risk_result['risk_score'] >= 60:
+                    st.info("📈 Growth")
+                elif risk_result['risk_score'] >= 40:
+                    st.warning("⚖️ Balanced")
+                else:
+                    st.error("🛡️ Conservative")
+            
+            with col3:
+                st.metric("Equity Allocation", f"{risk_result['recommended_equity']}%")
+                st.caption(f"Debt: {100 - risk_result['recommended_equity']}%")
+            
+            # Detailed analysis
+            st.markdown("### 📊 AI Analysis")
+            
+            for insight in risk_result['insights']:
+                if insight['type'] == 'strength':
+                    st.success(f"✅ **{insight['title']}:** {insight['message']}")
+                elif insight['type'] == 'concern':
+                    st.warning(f"⚠️ **{insight['title']}:** {insight['message']}")
+                else:
+                    st.info(f"💡 **{insight['title']}:** {insight['message']}")
+            
+            # Recommended allocation
+            st.markdown("### 🎯 Recommended Asset Allocation")
+            
+            allocation = risk_result['recommended_allocation']
+            
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Large Cap", f"{allocation['large_cap']}%")
+            col2.metric("Mid Cap", f"{allocation['mid_cap']}%")
+            col3.metric("Small Cap", f"{allocation['small_cap']}%")
+            
+            col1, col2, col3 = st.columns(3)
+            col1.metric("International", f"{allocation['international']}%")
+            col2.metric("Debt/Hybrid", f"{allocation['debt']}%")
+            col3.metric("Sectoral/Thematic", f"{allocation['sectoral']}%")
+            
+            # Action items
+            st.markdown("### ✅ Action Items")
+            for action in risk_result['action_items']:
+                st.checkbox(action, key=f"action_{action[:20]}")
+            
+            return risk_result
+    
+    return None
+
+
+def calculate_ai_risk_score(answers):
+    """
+    AI-powered risk score calculation based on comprehensive questionnaire
+    Considers: Demographics, psychology, market conditions, goals
+    """
+    
+    score = 0
+    insights = []
+    action_items = []
+    
+    # ═══════════════════════════════════════════════════════════════
+    # PART 1: DEMOGRAPHIC & FINANCIAL SCORING (25 points max)
+    # ═══════════════════════════════════════════════════════════════
+    
+    # Age scoring (10 points)
+    age = answers['age']
+    if age < 30:
+        score += 10
+        insights.append({
+            'type': 'strength',
+            'title': 'Young Investor Advantage',
+            'message': f'At {age}, you have 30+ years to recover from market volatility. Time is your biggest asset.'
+        })
+    elif age < 40:
+        score += 8
+    elif age < 50:
+        score += 5
+        insights.append({
+            'type': 'note',
+            'title': 'Mid-Career Phase',
+            'message': 'Balance growth with gradual shift toward stability over next 10 years.'
+        })
+    else:
+        score += 3
+        insights.append({
+            'type': 'concern',
+            'title': 'Nearing Retirement',
+            'message': 'Start reducing equity exposure gradually. Focus on capital preservation.'
+        })
+        action_items.append("Review portfolio annually and reduce equity by 2-3% per year")
+    
+    # Income stability (8 points)
+    income_map = {
+        "Highly stable (govt/large company)": 8,
+        "Stable with regular increments": 7,
+        "Variable but predictable": 5,
+        "Highly variable (business/commission)": 3,
+        "Unstable/between jobs": 1
+    }
+    score += income_map.get(answers['income_stability'], 5)
+    
+    if income_map.get(answers['income_stability'], 5) < 5:
+        insights.append({
+            'type': 'concern',
+            'title': 'Income Stability',
+            'message': 'Variable income suggests keeping larger emergency fund and lower equity exposure.'
+        })
+        action_items.append("Build 9-12 month emergency fund before aggressive investing")
+    
+    # Debt obligations (7 points - reverse scoring)
+    debt_map = {
+        "No debt": 7,
+        "< 20% of income": 6,
+        "20-40% of income": 4,
+        "40-60% of income": 2,
+        "> 60% of income": 0
+    }
+    score += debt_map.get(answers['debt_obligations'], 4)
+    
+    if debt_map.get(answers['debt_obligations'], 4) < 4:
+        insights.append({
+            'type': 'concern',
+            'title': 'High Debt Load',
+            'message': 'Focus on debt reduction first. High-interest debt (>12%) should be priority over investing.'
+        })
+        action_items.append("Pay off high-interest debt before aggressive equity investment")
+    
+    # ═══════════════════════════════════════════════════════════════
+    # PART 2: GOAL & HORIZON SCORING (25 points max)
+    # ═══════════════════════════════════════════════════════════════
+    
+    # Investment goal (12 points)
+    goal_map = {
+        "Retirement (15+ years away)": 12,
+        "Child's education (10-15 years)": 10,
+        "House down payment (5-10 years)": 7,
+        "Marriage/major expense (3-5 years)": 4,
+        "Short-term wealth building (< 3 years)": 2,
+        "Emergency corpus building": 1
+    }
+    score += goal_map.get(answers['investment_goal'], 7)
+    
+    # Goal flexibility (8 points)
+    flex_map = {
+        "Very flexible - can delay if needed": 8,
+        "Somewhat flexible - can delay 1-2 years": 6,
+        "Fixed - must reach goal by target date": 3,
+        "Urgent - need money sooner if possible": 1
+    }
+    score += flex_map.get(answers['goal_flexibility'], 5)
+    
+    if flex_map.get(answers['goal_flexibility'], 5) < 4:
+        insights.append({
+            'type': 'concern',
+            'title': 'Inflexible Timeline',
+            'message': 'Fixed deadlines require conservative approach to avoid selling at market bottom.'
+        })
+    
+    # Investment priority (5 points)
+    priority_map = {
+        "Maximum growth - I want highest returns": 5,
+        "Growth with some safety": 4,
+        "Balanced - equal focus on growth and safety": 3,
+        "Safety with some growth": 2,
+        "Capital protection - don't want to lose money": 1
+    }
+    score += priority_map.get(answers['investment_priority'], 3)
+    
+    # ═══════════════════════════════════════════════════════════════
+    # PART 3: PSYCHOLOGICAL SCORING (30 points max)
+    # ═══════════════════════════════════════════════════════════════
+    
+    # Loss reaction (12 points - MOST IMPORTANT)
+    loss_map = {
+        "Panic and sell everything immediately": 0,
+        "Feel very anxious and consider selling": 3,
+        "Feel uncomfortable but hold steady": 7,
+        "Stay calm and continue SIPs": 10,
+        "Get excited and invest more (buy the dip)": 12
+    }
+    loss_score = loss_map.get(answers['loss_reaction'], 7)
+    score += loss_score
+    
+    if loss_score < 7:
+        insights.append({
+            'type': 'concern',
+            'title': 'Volatility Sensitivity',
+            'message': 'Your reaction to losses suggests lower equity allocation. Consider 50-60% equity max.'
+        })
+        action_items.append("Set up SIP auto-debit to avoid emotional decisions during volatility")
+    else:
+        insights.append({
+            'type': 'strength',
+            'title': 'Emotional Discipline',
+            'message': 'Your ability to handle volatility allows higher equity exposure for better long-term returns.'
+        })
+    
+    # Experience (10 points)
+    exp_map = {
+        "Complete beginner - first time investing": 2,
+        "Beginner - invested in FD/PPF only": 4,
+        "Intermediate - some mutual fund experience": 7,
+        "Experienced - actively managed portfolio for 3+ years": 9,
+        "Expert - 10+ years, survived market crashes": 10
+    }
+    score += exp_map.get(answers['past_experience'], 5)
+    
+    # Sleep test (8 points)
+    sleep_map = {
+        "Any loss disturbs me - want 100% safety": 0,
+        "5% loss max - very conservative": 2,
+        "10-15% loss - somewhat conservative": 4,
+        "20-30% loss - moderate risk OK": 6,
+        "30-50% loss - high risk OK, focused on long term": 8
+    }
+    score += sleep_map.get(answers['sleep_test'], 4)
+    
+    # ═══════════════════════════════════════════════════════════════
+    # PART 4: BEHAVIORAL & MARKET AWARENESS (20 points max)
+    # ═══════════════════════════════════════════════════════════════
+    
+    # Market timing view (current market conditions)
+    timing_map = {
+        "Markets are too high - I'll wait for correction": 2,
+        "Markets are high but I'll invest cautiously": 5,
+        "Don't know/don't care about market levels": 7,
+        "Good time to invest with SIP approach": 8,
+        "Great time - will invest lumpsum aggressively": 4  # Slightly risky if markets are high
+    }
+    score += timing_map.get(answers['market_timing'], 6)
+    
+    if "wait for correction" in answers['market_timing']:
+        insights.append({
+            'type': 'note',
+            'title': 'Market Timing Concern',
+            'message': 'Timing the market is nearly impossible. SIP approach eliminates this worry and averages out costs.'
+        })
+        action_items.append("Start SIP immediately rather than waiting - time in market > timing the market")
+    
+    # News influence (lower score = more influenced = more risk)
+    news_map = {
+        "Strongly - I change plans based on news": 2,
+        "Moderately - news makes me reconsider": 5,
+        "Slightly - I'm aware but stay the course": 8,
+        "Minimal - I focus on long term": 9,
+        "Not at all - I ignore short-term noise": 10
+    }
+    score += news_map.get(answers['news_influence'], 6)
+    
+    # Checking frequency (inverse - less checking = better)
+    freq_map = {
+        "Multiple times daily": 2,
+        "Daily": 4,
+        "Weekly": 6,
+        "Monthly": 8,
+        "Quarterly/Annually": 10
+    }
+    score += freq_map.get(answers['investment_frequency'], 6)
+    
+    if freq_map.get(answers['investment_frequency'], 6) < 5:
+        insights.append({
+            'type': 'concern',
+            'title': 'Over-monitoring',
+            'message': 'Checking portfolio too frequently increases anxiety and leads to poor decisions.'
+        })
+        action_items.append("Limit portfolio checks to monthly. Set calendar reminder for review dates.")
+    
+    # ═══════════════════════════════════════════════════════════════
+    # FETCH CURRENT MARKET CONDITIONS
+    # ═══════════════════════════════════════════════════════════════
+    
+    market_conditions = get_market_conditions_live()
+    
+    # Adjust score based on current market
+    if market_conditions['nifty_pe'] > market_conditions['historical_avg_pe'] * 1.2:
+        score -= 5  # Market overheated - reduce risk
+        insights.append({
+            'type': 'concern',
+            'title': 'Market Valuation Alert',
+            'message': f"Nifty PE at {market_conditions['nifty_pe']:.1f} vs avg {market_conditions['historical_avg_pe']:.1f}. "
+                      f"Reduce lumpsum, increase SIP, favor large caps over small caps."
+        })
+    
+    if market_conditions['india_vix'] > 18:
+        score -= 3  # High volatility
+        insights.append({
+            'type': 'note',
+            'title': 'Elevated Volatility',
+            'message': f"India VIX at {market_conditions['india_vix']:.1f} indicates uncertainty. "
+                      f"Stick to quality funds and avoid aggressive small cap exposure."
+        })
+    
+    # ═══════════════════════════════════════════════════════════════
+    # DETERMINE RISK PROFILE & ALLOCATION
+    # ═══════════════════════════════════════════════════════════════
+    
+    # Normalize score to 0-100
+    risk_score = max(0, min(100, score))
+    
+    # Determine profile
+    if risk_score >= 75:
+        profile_name = "Aggressive Growth Investor"
+        equity_allocation = 85
+        allocation = {
+            'large_cap': 25,
+            'mid_cap': 30,
+            'small_cap': 20,
+            'international': 10,
+            'debt': 10,
+            'sectoral': 5
+        }
+    elif risk_score >= 60:
+        profile_name = "Growth-Oriented Investor"
+        equity_allocation = 70
+        allocation = {
+            'large_cap': 30,
+            'mid_cap': 25,
+            'small_cap': 10,
+            'international': 5,
+            'debt': 25,
+            'sectoral': 5
+        }
+    elif risk_score >= 45:
+        profile_name = "Balanced Investor"
+        equity_allocation = 55
+        allocation = {
+            'large_cap': 30,
+            'mid_cap': 15,
+            'small_cap': 5,
+            'international': 5,
+            'debt': 40,
+            'sectoral': 5
+        }
+    elif risk_score >= 30:
+        profile_name = "Conservative Investor"
+        equity_allocation = 35
+        allocation = {
+            'large_cap': 25,
+            'mid_cap': 5,
+            'small_cap': 0,
+            'international': 5,
+            'debt': 60,
+            'sectoral': 5
+        }
+    else:
+        profile_name = "Capital Preservation Focus"
+        equity_allocation = 20
+        allocation = {
+            'large_cap': 15,
+            'mid_cap': 0,
+            'small_cap': 0,
+            'international': 5,
+            'debt': 75,
+            'sectoral': 5
+        }
+    
+    # Add final recommendations
+    if age < 35 and risk_score < 60:
+        insights.append({
+            'type': 'note',
+            'title': 'Young Investor Opportunity',
+            'message': 'You have time on your side. Consider slightly higher equity allocation (add 10%) for better long-term wealth.'
+        })
+    
+    if not action_items:
+        action_items.append("Start SIP immediately with selected allocation")
+        action_items.append("Review portfolio quarterly, rebalance annually")
+        action_items.append("Increase SIP by 10% every year (step-up SIP)")
+    
+    return {
+        'risk_score': risk_score,
+        'profile_name': profile_name,
+        'recommended_equity': equity_allocation,
+        'recommended_allocation': allocation,
+        'insights': insights,
+        'action_items': action_items,
+        'market_conditions': market_conditions
+    }
+
+
 def check_emergency_fund_status(user_id, monthly_expenses):
     """
     Point 14: Emergency fund tracking
