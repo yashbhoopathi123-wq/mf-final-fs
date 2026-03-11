@@ -3386,6 +3386,12 @@ RISK_ALLOCATIONS = {
         "expected_return": 17.5,
         "color": "#ef4444",
     },
+    "🧠 Detailed Smart Analysis (AI Quiz)": {
+        "description": "Take comprehensive 20-question quiz for AI-powered personalized allocation based on your situation and current market conditions.",
+        "sectors": {},  # Will be dynamically set by AI
+        "expected_return": 0,  # Will be calculated by AI
+        "color": "#8b5cf6",
+    },
 }
 
 def simulate_portfolio_returns(principal, monthly_sip, years, annual_cagr):
@@ -3507,11 +3513,48 @@ with tab4:
     if port_principal == 0 and port_sip == 0:
         st.warning("Please enter a lumpsum amount or SIP amount (or both).")
     else:
-        allocation_data = RISK_ALLOCATIONS[risk_profile]
-        sector_allocation = allocation_data["sectors"]
-        blended_cagr = allocation_data["expected_return"]
-        profile_color = allocation_data["color"]
-
+        # Handle risk profile selection
+        if "Detailed Smart Analysis" in risk_profile:
+            st.info("👇 **Take the 20-question AI quiz for personalized allocation**")
+            st.markdown("---")
+            quiz_result = conduct_comprehensive_risk_assessment()
+            
+            if quiz_result:
+                st.success(f"✅ AI Complete! Profile: **{quiz_result['profile_name']}**")
+                ai_alloc = quiz_result['recommended_allocation']
+                ai_sectors = {}
+                if ai_alloc['large_cap'] > 0:
+                    ai_sectors['Large Cap'] = ai_alloc['large_cap']
+                if ai_alloc['mid_cap'] > 0:
+                    ai_sectors['Mid Cap'] = ai_alloc['mid_cap']
+                if ai_alloc['small_cap'] > 0:
+                    ai_sectors['Small Cap'] = ai_alloc['small_cap']
+                if ai_alloc['international'] > 0:
+                    ai_sectors['Global / International'] = ai_alloc['international']
+                if ai_alloc['debt'] > 0:
+                    ai_sectors['Debt / Liquid'] = ai_alloc['debt']
+                if ai_alloc['sectoral'] > 0:
+                    ai_sectors['Sector – Technology'] = ai_alloc['sectoral']
+                
+                allocation_data = {
+                    "sectors": ai_sectors,
+                    "expected_return": 10 + (quiz_result['risk_score'] / 10),
+                    "color": "#8b5cf6"
+                }
+                sector_allocation = ai_sectors
+                blended_cagr = allocation_data["expected_return"]
+                profile_color = "#8b5cf6"
+                risk_profile = quiz_result['profile_name']
+            else:
+                st.warning("Complete quiz to continue")
+                st.stop()
+        else:
+            # Standard profile selected
+            allocation_data = RISK_ALLOCATIONS[risk_profile]
+            sector_allocation = allocation_data["sectors"]
+            blended_cagr = allocation_data["expected_return"]
+            profile_color = allocation_data["color"]
+        
         # ── Portfolio summary ─────────────────────────────────────────────────
         st.markdown("---")
         st.markdown(f"### {risk_profile} Portfolio — {port_years}-Year Projection")
