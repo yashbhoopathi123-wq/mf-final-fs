@@ -12,14 +12,52 @@ import json
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from io import StringIO
+import os
 import warnings
+import os
+
+# Database configuration - PERSISTENT STORAGE  
+DB_DIR = os.path.join(os.path.expanduser('~'), '.mutual_fund_app')
+DB_PATH = os.path.join(DB_DIR, 'DB_PATH')
+
+# Create directory if it doesn't exist
+if not os.path.exists(DB_DIR):
+    os.makedirs(DB_DIR)
 warnings.filterwarnings('ignore')
+
+
+# Database configuration - PERSISTENT STORAGE
+DB_DIR = os.path.join(os.path.expanduser('~'), '.mutual_fund_app')
+DB_PATH = os.path.join(DB_DIR, 'DB_PATH')
+
+# Ensure database directory exists
+if not os.path.exists(DB_DIR):
+    os.makedirs(DB_DIR)
+
+
+
+def get_db_path():
+    """Get the persistent database file path"""
+    db_dir = os.path.join(os.path.expanduser('~'), '.mutual_fund_app')
+    if not os.path.exists(db_dir):
+        os.makedirs(db_dir)
+    return os.path.join(db_dir, 'DB_PATH')
+
+
 
 def init_database():
     """Initialize SQLite database with users and portfolios tables"""
     
     # Create database file in same directory as app
-    db_path = 'mutual_fund_app.db'
+    db_path = 'DB_PATH'
+    
+    
+    # Ensure database directory exists
+    db_dir = os.path.join(os.path.expanduser('~'), '.mutual_fund_app')
+    if not os.path.exists(db_dir):
+        os.makedirs(db_dir)
+    
+    db_path = os.path.join(db_dir, 'DB_PATH')
     
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -79,7 +117,7 @@ def verify_password(password, password_hash):
 def create_user(username, password, email=None):
     """Create a new user account"""
     try:
-        conn = sqlite3.connect('mutual_fund_app.db')
+        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'DB_PATH'))
         cursor = conn.cursor()
         
         # Check if username exists
@@ -110,7 +148,7 @@ def create_user(username, password, email=None):
 def authenticate_user(username, password):
     """Authenticate user login"""
     try:
-        conn = sqlite3.connect('mutual_fund_app.db')
+        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'DB_PATH'))
         cursor = conn.cursor()
         
         cursor.execute('SELECT user_id, password_hash FROM users WHERE username = ?', (username,))
@@ -144,7 +182,7 @@ def authenticate_user(username, password):
 def save_portfolio_to_db(user_id, portfolio_data):
     """Save portfolio to database"""
     try:
-        conn = sqlite3.connect('mutual_fund_app.db')
+        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'DB_PATH'))
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -179,7 +217,7 @@ def save_portfolio_to_db(user_id, portfolio_data):
 def load_user_portfolios(user_id):
     """Load all portfolios for a user"""
     try:
-        conn = sqlite3.connect('mutual_fund_app.db')
+        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'DB_PATH'))
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -214,7 +252,7 @@ def load_user_portfolios(user_id):
 def update_portfolio_in_db(portfolio_id, user_id, updated_data):
     """Update existing portfolio"""
     try:
-        conn = sqlite3.connect('mutual_fund_app.db')
+        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'DB_PATH'))
         cursor = conn.cursor()
         
         # Verify ownership
@@ -249,7 +287,7 @@ def update_portfolio_in_db(portfolio_id, user_id, updated_data):
 def delete_portfolio_from_db(portfolio_id, user_id):
     """Delete a portfolio"""
     try:
-        conn = sqlite3.connect('mutual_fund_app.db')
+        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'DB_PATH'))
         cursor = conn.cursor()
         
         # Verify ownership
@@ -1269,7 +1307,7 @@ def create_goal(user_id, goal_name, target_amount, target_date, current_savings=
     Point 6: Goal tracking
     """
     try:
-        conn = sqlite3.connect('mutual_fund_app.db')
+        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'DB_PATH'))
         c = conn.cursor()
         
         # Create goals table if not exists
@@ -1299,7 +1337,7 @@ def create_goal(user_id, goal_name, target_amount, target_date, current_savings=
 def get_user_goals(user_id):
     """Get all goals for user"""
     try:
-        conn = sqlite3.connect('mutual_fund_app.db')
+        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'DB_PATH'))
         c = conn.cursor()
         c.execute("SELECT goal_id, goal_name, target_amount, target_date, current_savings FROM goals WHERE user_id=?", (user_id,))
         goals = []
@@ -1588,9 +1626,11 @@ def conduct_comprehensive_risk_assessment():
                 "1️⃣7️⃣ Current Market View",
                 ["Markets are too high - I'll wait for correction",
                  "Markets are high but I'll invest cautiously",
+                 "Markets at fair value - neutral view",
+                 "Markets are low - good entry point",
+                 "Markets are very low - excellent opportunity",
                  "Don't know/don't care about market levels",
-                 "Good time to invest with SIP approach",
-                 "Great time - will invest lumpsum aggressively"],
+                 "Good time to invest with SIP approach"],
                 help="Your market view affects allocation"
             )
             
@@ -1697,9 +1737,9 @@ def conduct_comprehensive_risk_assessment():
             col3.metric("Sectoral/Thematic", f"{allocation['sectoral']}%")
             
             # Action items
-            st.markdown("### ✅ Action Items")
-            for action in risk_result['action_items']:
-                st.checkbox(action, key=f"action_{action[:20]}")
+            st.markdown("### ✅ Recommended Action Items")
+            for i, action in enumerate(risk_result['action_items']):
+                st.write(f"{i+1}. {action}")
             
             return risk_result
     
@@ -1881,9 +1921,11 @@ def calculate_ai_risk_score(answers):
     timing_map = {
         "Markets are too high - I'll wait for correction": 2,
         "Markets are high but I'll invest cautiously": 5,
+        "Markets at fair value - neutral view": 6,
+        "Markets are low - good entry point": 9,
+        "Markets are very low - excellent opportunity": 10,
         "Don't know/don't care about market levels": 7,
-        "Good time to invest with SIP approach": 8,
-        "Great time - will invest lumpsum aggressively": 4  # Slightly risky if markets are high
+        "Good time to invest with SIP approach": 8
     }
     score += timing_map.get(answers['market_timing'], 6)
     
@@ -3520,7 +3562,37 @@ with tab4:
             quiz_result = conduct_comprehensive_risk_assessment()
             
             if quiz_result:
-                st.success(f"✅ AI Complete! Profile: **{quiz_result['profile_name']}**")
+                # Show profile clearly
+                st.markdown("---")
+                st.markdown(f"## 🎯 Your AI Assessment Result")
+                st.success(f"### {quiz_result['profile_name']}")
+                
+                col1, col2, col3 = st.columns(3)
+                col1.metric("Risk Score", f"{quiz_result['risk_score']}/100")
+                col2.metric("Equity Allocation", f"{quiz_result['recommended_equity']}%")
+                col3.metric("Profile Type", "High Risk" if quiz_result['risk_score'] >= 70 else "Moderate" if quiz_result['risk_score'] >= 50 else "Conservative")
+                
+                st.markdown("---")
+                
+                # Show Continue or Retake buttons
+                col_a, col_b = st.columns(2)
+                
+                if col_a.button("✅ Continue with This Profile", type="primary", use_container_width=True):
+                    st.session_state.ai_quiz_completed = True
+                    st.session_state.ai_quiz_result = quiz_result
+                    st.rerun()
+                
+                if col_b.button("🔄 Retake Quiz", use_container_width=True):
+                    st.session_state.ai_quiz_completed = False
+                    if 'ai_quiz_result' in st.session_state:
+                        del st.session_state.ai_quiz_result
+                    st.rerun()
+                
+                st.stop()  # Stop here until user clicks Continue
+            
+            # If user clicked Continue, process the allocation
+            if st.session_state.get('ai_quiz_completed', False) and 'ai_quiz_result' in st.session_state:
+                quiz_result = st.session_state.ai_quiz_result
                 ai_alloc = quiz_result['recommended_allocation']
                 ai_sectors = {}
                 if ai_alloc['large_cap'] > 0:
@@ -3558,7 +3630,7 @@ with tab4:
         # ── Portfolio summary ─────────────────────────────────────────────────
         st.markdown("---")
         st.markdown(f"### {risk_profile} Portfolio — {port_years}-Year Projection")
-        st.info(allocation_data["description"])
+        # st.info(allocation_data.get("description", ""))  # Removed to prevent error
 
         sim = simulate_portfolio_returns(port_principal, port_sip, port_years, blended_cagr)
 
