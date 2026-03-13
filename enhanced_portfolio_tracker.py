@@ -14,21 +14,12 @@ from datetime import datetime, timedelta
 from io import StringIO
 import os
 import warnings
-import os
-
-# Database configuration - PERSISTENT STORAGE  
-DB_DIR = os.path.join(os.path.expanduser('~'), '.mutual_fund_app')
-DB_PATH = os.path.join(DB_DIR, 'DB_PATH')
-
-# Create directory if it doesn't exist
-if not os.path.exists(DB_DIR):
-    os.makedirs(DB_DIR)
 warnings.filterwarnings('ignore')
 
 
 # Database configuration - PERSISTENT STORAGE
 DB_DIR = os.path.join(os.path.expanduser('~'), '.mutual_fund_app')
-DB_PATH = os.path.join(DB_DIR, 'DB_PATH')
+DB_PATH = os.path.join(DB_DIR, 'mutual_fund_app.db')
 
 # Ensure database directory exists
 if not os.path.exists(DB_DIR):
@@ -41,7 +32,7 @@ def get_db_path():
     db_dir = os.path.join(os.path.expanduser('~'), '.mutual_fund_app')
     if not os.path.exists(db_dir):
         os.makedirs(db_dir)
-    return os.path.join(db_dir, 'DB_PATH')
+    return os.path.join(db_dir, 'mutual_fund_app.db')
 
 
 
@@ -49,7 +40,7 @@ def init_database():
     """Initialize SQLite database with users and portfolios tables"""
     
     # Create database file in same directory as app
-    db_path = 'DB_PATH'
+    db_path = 'mutual_fund_app.db'
     
     
     # Ensure database directory exists
@@ -57,7 +48,7 @@ def init_database():
     if not os.path.exists(db_dir):
         os.makedirs(db_dir)
     
-    db_path = os.path.join(db_dir, 'DB_PATH')
+    db_path = os.path.join(db_dir, 'mutual_fund_app.db')
     
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -117,7 +108,7 @@ def verify_password(password, password_hash):
 def create_user(username, password, email=None):
     """Create a new user account"""
     try:
-        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'DB_PATH'))
+        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'mutual_fund_app.db'))
         cursor = conn.cursor()
         
         # Check if username exists
@@ -148,7 +139,7 @@ def create_user(username, password, email=None):
 def authenticate_user(username, password):
     """Authenticate user login"""
     try:
-        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'DB_PATH'))
+        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'mutual_fund_app.db'))
         cursor = conn.cursor()
         
         cursor.execute('SELECT user_id, password_hash FROM users WHERE username = ?', (username,))
@@ -182,7 +173,7 @@ def authenticate_user(username, password):
 def save_portfolio_to_db(user_id, portfolio_data):
     """Save portfolio to database"""
     try:
-        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'DB_PATH'))
+        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'mutual_fund_app.db'))
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -217,7 +208,7 @@ def save_portfolio_to_db(user_id, portfolio_data):
 def load_user_portfolios(user_id):
     """Load all portfolios for a user"""
     try:
-        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'DB_PATH'))
+        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'mutual_fund_app.db'))
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -252,7 +243,7 @@ def load_user_portfolios(user_id):
 def update_portfolio_in_db(portfolio_id, user_id, updated_data):
     """Update existing portfolio"""
     try:
-        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'DB_PATH'))
+        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'mutual_fund_app.db'))
         cursor = conn.cursor()
         
         # Verify ownership
@@ -287,7 +278,7 @@ def update_portfolio_in_db(portfolio_id, user_id, updated_data):
 def delete_portfolio_from_db(portfolio_id, user_id):
     """Delete a portfolio"""
     try:
-        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'DB_PATH'))
+        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'mutual_fund_app.db'))
         cursor = conn.cursor()
         
         # Verify ownership
@@ -579,6 +570,7 @@ def render_fund_selector_interface(sector_name, sector_allocation_pct, total_inv
 
 def render_portfolio_summary(all_holdings):
     """Display portfolio summary"""
+    
     st.markdown("### 📊 Portfolio Summary")
     tl = sum(h['lumpsum_amount'] for h in all_holdings)
     ts = sum(h['monthly_sip'] for h in all_holdings)
@@ -1307,7 +1299,7 @@ def create_goal(user_id, goal_name, target_amount, target_date, current_savings=
     Point 6: Goal tracking
     """
     try:
-        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'DB_PATH'))
+        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'mutual_fund_app.db'))
         c = conn.cursor()
         
         # Create goals table if not exists
@@ -1337,7 +1329,7 @@ def create_goal(user_id, goal_name, target_amount, target_date, current_savings=
 def get_user_goals(user_id):
     """Get all goals for user"""
     try:
-        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'DB_PATH'))
+        conn = sqlite3.connect(os.path.join(os.path.expanduser('~'), '.mutual_fund_app', 'mutual_fund_app.db'))
         c = conn.cursor()
         c.execute("SELECT goal_id, goal_name, target_amount, target_date, current_savings FROM goals WHERE user_id=?", (user_id,))
         goals = []
@@ -3557,7 +3549,13 @@ with tab4:
     else:
         # Handle risk profile selection
         if "Detailed Smart Analysis" in risk_profile:
-            st.info("👇 **Take the 20-question AI quiz for personalized allocation**")
+            # Check if quiz already completed (user clicked Continue)
+            if st.session_state.get('ai_quiz_completed', False) and 'ai_quiz_result' in st.session_state:
+                # Use stored result, skip quiz display
+                quiz_result = st.session_state.ai_quiz_result
+            else:
+                # Show quiz
+                st.info("👇 **Take the 20-question AI quiz for personalized allocation**")
             st.markdown("---")
             quiz_result = conduct_comprehensive_risk_assessment()
             
@@ -3591,9 +3589,8 @@ with tab4:
                 st.stop()  # Stop here until user clicks Continue
             
             # If user clicked Continue, process the allocation
-            if st.session_state.get('ai_quiz_completed', False) and 'ai_quiz_result' in st.session_state:
-                quiz_result = st.session_state.ai_quiz_result
-                ai_alloc = quiz_result['recommended_allocation']
+            if st.session_state.get('ai_quiz_completed', False) and risk_result:
+                ai_alloc = risk_result['recommended_allocation']
                 ai_sectors = {}
                 if ai_alloc['large_cap'] > 0:
                     ai_sectors['Large Cap'] = ai_alloc['large_cap']
@@ -3822,6 +3819,20 @@ with tab4:
                         if funds:
                             h = render_fund_selector_interface(sector, pct, total_inv, funds)
                             all_holdings.extend(h)
+            
+            # Custom sector option
+            st.markdown("---")
+            st.markdown("### ➕ Add Another Sector? (Optional)")
+            if st.checkbox("Yes, add a sector not in my allocation", key='add_custom_sector_check'):
+                c1, c2 = st.columns(2)
+                custom_sec = c1.selectbox("Sector", ["Large Cap", "Mid Cap", "Small Cap", 
+                    "Debt / Liquid", "Gold / Commodity", "US Tech / NASDAQ", "Global / International"], key='cust_sec')
+                custom_pct = c2.number_input("Allocation %", 1, 50, 5, key='cust_pct')
+                st.info(f"💰 {custom_sec}: ₹{(total_inv * custom_pct / 100):,.0f}")
+                if custom_sec in PORTFOLIO_SECTORS and PORTFOLIO_SECTORS[custom_sec]['funds']:
+                    custom_h = render_fund_selector_interface(custom_sec, custom_pct, total_inv, PORTFOLIO_SECTORS[custom_sec]['funds'])
+                    all_holdings.extend(custom_h)
+                    st.success(f"✅ Added {custom_sec}")
             
             if all_holdings:
                 st.markdown("---")
