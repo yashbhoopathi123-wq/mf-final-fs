@@ -3551,46 +3551,45 @@ with tab4:
         if "Detailed Smart Analysis" in risk_profile:
             # Check if quiz already completed (user clicked Continue)
             if st.session_state.get('ai_quiz_completed', False) and 'ai_quiz_result' in st.session_state:
-                # Use stored result, skip quiz display
+                # Quiz completed - use stored result and process allocation
                 quiz_result = st.session_state.ai_quiz_result
             else:
-                # Show quiz
+                # First time - show quiz
                 st.info("👇 **Take the 20-question AI quiz for personalized allocation**")
-            st.markdown("---")
-            quiz_result = conduct_comprehensive_risk_assessment()
+                st.markdown("---")
+                quiz_result = conduct_comprehensive_risk_assessment()
+                
+                # If quiz returned result, show it with Continue/Retake buttons
+                if quiz_result:
+                    st.markdown("---")
+                    st.markdown(f"## 🎯 Your AI Assessment Result")
+                    st.success(f"### {quiz_result['profile_name']}")
+                    
+                    col1, col2, col3 = st.columns(3)
+                    col1.metric("Risk Score", f"{quiz_result['risk_score']}/100")
+                    col2.metric("Equity Allocation", f"{quiz_result['recommended_equity']}%")
+                    col3.metric("Profile Type", "High Risk" if quiz_result['risk_score'] >= 70 else "Moderate" if quiz_result['risk_score'] >= 50 else "Conservative")
+                    
+                    st.markdown("---")
+                    
+                    col_a, col_b = st.columns(2)
+                    
+                    if col_a.button("✅ Continue with This Profile", type="primary", use_container_width=True):
+                        st.session_state.ai_quiz_completed = True
+                        st.session_state.ai_quiz_result = quiz_result
+                        st.rerun()
+                    
+                    if col_b.button("🔄 Retake Quiz", use_container_width=True):
+                        st.session_state.ai_quiz_completed = False
+                        if 'ai_quiz_result' in st.session_state:
+                            del st.session_state.ai_quiz_result
+                        st.rerun()
+                    
+                    st.stop()  # Stop until button clicked
             
+            # Process the allocation (either from Continue or fresh quiz)
             if quiz_result:
-                # Show profile clearly
-                st.markdown("---")
-                st.markdown(f"## 🎯 Your AI Assessment Result")
-                st.success(f"### {quiz_result['profile_name']}")
-                
-                col1, col2, col3 = st.columns(3)
-                col1.metric("Risk Score", f"{quiz_result['risk_score']}/100")
-                col2.metric("Equity Allocation", f"{quiz_result['recommended_equity']}%")
-                col3.metric("Profile Type", "High Risk" if quiz_result['risk_score'] >= 70 else "Moderate" if quiz_result['risk_score'] >= 50 else "Conservative")
-                
-                st.markdown("---")
-                
-                # Show Continue or Retake buttons
-                col_a, col_b = st.columns(2)
-                
-                if col_a.button("✅ Continue with This Profile", type="primary", use_container_width=True):
-                    st.session_state.ai_quiz_completed = True
-                    st.session_state.ai_quiz_result = quiz_result
-                    st.rerun()
-                
-                if col_b.button("🔄 Retake Quiz", use_container_width=True):
-                    st.session_state.ai_quiz_completed = False
-                    if 'ai_quiz_result' in st.session_state:
-                        del st.session_state.ai_quiz_result
-                    st.rerun()
-                
-                st.stop()  # Stop here until user clicks Continue
-            
-            # If user clicked Continue, process the allocation
-            if st.session_state.get('ai_quiz_completed', False) and risk_result:
-                ai_alloc = risk_result['recommended_allocation']
+                ai_alloc = quiz_result['recommended_allocation']
                 ai_sectors = {}
                 if ai_alloc['large_cap'] > 0:
                     ai_sectors['Large Cap'] = ai_alloc['large_cap']
@@ -3614,9 +3613,6 @@ with tab4:
                 blended_cagr = allocation_data["expected_return"]
                 profile_color = "#8b5cf6"
                 risk_profile = quiz_result['profile_name']
-            else:
-                st.warning("Complete quiz to continue")
-                st.stop()
         else:
             # Standard profile selected
             allocation_data = RISK_ALLOCATIONS[risk_profile]
