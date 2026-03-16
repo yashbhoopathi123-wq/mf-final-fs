@@ -1669,7 +1669,8 @@ def conduct_comprehensive_risk_assessment():
             # Calculate comprehensive risk score
             risk_result = calculate_ai_risk_score(answers)
             
-            # Store in session state
+            # CRITICAL: Store IMMEDIATELY in session state
+            st.session_state.quiz_result_temp = risk_result
             st.session_state.risk_assessment_result = risk_result
             st.session_state.risk_answers = answers
             
@@ -1734,6 +1735,10 @@ def conduct_comprehensive_risk_assessment():
                 st.write(f"{i+1}. {action}")
             
             return risk_result
+    
+    # If Calculate button wasn't clicked but we have stored result, return it
+    if 'quiz_result_temp' in st.session_state:
+        return st.session_state.quiz_result_temp
     
     return None
 
