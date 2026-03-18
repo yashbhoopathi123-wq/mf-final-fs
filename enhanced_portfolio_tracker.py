@@ -510,12 +510,25 @@ def render_user_sidebar():
                 st.sidebar.caption(f"SIP: ₹{params.get('monthly_sip', 0):,}/mo")
                 st.sidebar.caption(f"Tenure: {params.get('years', 0)} yrs")
             
-            # Holdings preview
+            # Holdings preview with current values
             if active.get('holdings'):
                 with st.sidebar.expander("📊 Holdings", expanded=False):
-                    for h in active['holdings'][:5]:
-                        st.write(f"**{h.get('fund_name', 'Unknown')[:25]}**")
-                        st.caption(f"₹{h.get('lumpsum_amount', 0):,} + ₹{h.get('monthly_sip', 0)}/mo")
+                    # Show individual fund performance
+                    for detail in perf['holdings_detail'][:5]:
+                        st.write(f"**{detail['fund_name'][:30]}**")
+                        
+                        col1, col2 = st.columns(2)
+                        col1.caption(f"Invested: ₹{detail['invested']:,.0f}")
+                        col2.caption(f"Current: ₹{detail['current_value']:,.0f}")
+                        
+                        # Show gains with color
+                        if detail['gains'] >= 0:
+                            st.success(f"↗ ₹{detail['gains']:,.0f} ({detail['gains_pct']:.1f}%)")
+                        else:
+                            st.error(f"↘ ₹{detail['gains']:,.0f} ({detail['gains_pct']:.1f}%)")
+                        
+                        st.caption(f"NAV: ₹{detail['current_nav']:.2f} | Units: {detail['units']:.2f}")
+                        st.markdown("---")
     
     else:
         st.sidebar.info("No portfolios yet. Create one in the Portfolio Allocator!")
