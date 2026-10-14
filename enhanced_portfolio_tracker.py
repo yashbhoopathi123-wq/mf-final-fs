@@ -2127,14 +2127,10 @@ if not st.session_state.logged_in:
 st.set_page_config(page_title="Mutual Fund Analyzer", layout="wide")
 st.title("📊 Mutual Fund Performance Analyzer")
 
-# Sidebar
-st.sidebar.markdown("---")
-st.sidebar.markdown(f"### 👤 {st.session_state.username}")
-if st.sidebar.button("🚪 Logout", use_container_width=True):
-    for key in list(st.session_state.keys()):
-        del st.session_state[key]
-    st.rerun()
+# CALL THE SIDEBAR - THIS LOADS PORTFOLIOS FROM DATABASE
+render_user_sidebar()
 
+# Sidebar content is now handled by render_user_sidebar()
 st.sidebar.markdown("---")
 
 
@@ -2149,6 +2145,7 @@ def init_portfolio_storage():
         st.session_state.saved_portfolios = {}
     if 'active_portfolio_id' not in st.session_state:
         st.session_state.active_portfolio_id = None
+    # Portfolios are loaded from database by render_user_sidebar() after login
 
 init_portfolio_storage()
 
@@ -2320,53 +2317,7 @@ st.sidebar.info(
     "NSE India, AMFI, Moneycontrol, Value Research, "
     "Economic Times, Mint, Groww, RBI, MOSPI"
 )
-st.sidebar.markdown("---")
-st.sidebar.header("💼 My Saved Portfolios")
-
-saved_portfolios = st.session_state.saved_portfolios
-
-if saved_portfolios:
-    st.sidebar.success(f"📁 {len(saved_portfolios)} portfolio(s) saved")
-    
-    # Portfolio selector
-    portfolio_options = {p['id']: f"{p['name']} (created {p['created_date']})" 
-                        for p in saved_portfolios.values()}
-    
-    if portfolio_options:
-        selected_portfolio_display = st.sidebar.selectbox(
-            "Select Portfolio to Load",
-            options=list(portfolio_options.values()),
-            key='portfolio_selector'
-        )
-        
-        # Find ID from display name
-        selected_id = [pid for pid, display in portfolio_options.items() 
-                      if display == selected_portfolio_display][0]
-        
-        col1, col2 = st.sidebar.columns(2)
-        
-        with col1:
-            if st.button("📂 Load", key='load_btn', use_container_width=True):
-                st.session_state.active_portfolio_id = selected_id
-                st.success("✅ Portfolio loaded! Scroll to Portfolio Allocator tab.")
-                st.balloons()
-        
-        with col2:
-            if st.button("🗑️ Delete", key='delete_btn', use_container_width=True):
-                if delete_portfolio(selected_id):
-                    st.success("Deleted!")
-                    st.rerun()
-        
-        # Show active portfolio info
-        if st.session_state.active_portfolio_id:
-            active = saved_portfolios.get(st.session_state.active_portfolio_id)
-            if active:
-                st.sidebar.markdown(f"**🎯 Active:** {active['name']}")
-                st.sidebar.caption(f"Principal: ₹{active['investment_params']['principal']:,}")
-                st.sidebar.caption(f"Monthly SIP: ₹{active['investment_params']['monthly_sip']:,}")
-                st.sidebar.caption(f"Tenure: {active['investment_params']['years']} years")
-else:
-    st.sidebar.info("No saved portfolios yet. Create one in the **Portfolio Allocator** tab!")
+# Portfolios are now handled by render_user_sidebar() above
 
 
 # ═════════════════════════════════════════════════════════════════════════════
